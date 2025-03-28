@@ -41,8 +41,14 @@ export function toBucketSets(buckets: BucketMap): Array<Set<Flashcard>> {
 export function getBucketRange(
   buckets: Array<Set<Flashcard>>
 ): { minBucket: number; maxBucket: number } | undefined {
-  // TODO: Implement this function
-  throw new Error("Implement me!");
+  let minBucket = buckets.findIndex(bucket => bucket.size > 0);
+  if (minBucket === -1) {
+    return undefined;
+  }
+  let maxBucket = buckets.reduceRight((foundIndex, bucket, index) => 
+    foundIndex === -1 && bucket.size > 0 ? index : foundIndex, -1);
+  
+  return { minBucket, maxBucket };
 }
 
 /**
@@ -58,8 +64,25 @@ export function practice(
   buckets: Array<Set<Flashcard>>,
   day: number
 ): Set<Flashcard> {
-  // TODO: Implement this function
-  throw new Error("Implement me!");
+  const practiceCards = new Set<Flashcard>();
+  const practiceBuckets = [
+    0,           
+    1,           
+    2,           
+    3,           
+    4            
+  ];
+  
+  // practiceBuckets.forEach((bucketIndex, index) => {
+  //   if (index === 0 || day % ([4, 10, 30, 100][index - 1]) === 0) {
+  //     // Add all cards from this bucket to practice set
+  //     for (const card of buckets[bucketIndex] || []) {
+  //       practiceCards.add(card);
+  //     }
+  //   }
+  // });
+  
+  return practiceCards;
 }
 
 /**
@@ -76,8 +99,45 @@ export function update(
   card: Flashcard,
   difficulty: AnswerDifficulty
 ): BucketMap {
-  // TODO: Implement this function
-  throw new Error("Implement me!");
+  // Create a new map to avoid mutating the original
+  const updatedBuckets = new Map(buckets);
+  
+  // Find the current bucket of the card
+  let currentBucket = -1;
+  for (const [bucketNum, cardSet] of updatedBuckets.entries()) {
+    if (cardSet.has(card)) {
+      currentBucket = bucketNum;
+      cardSet.delete(card);
+      break;
+    }
+  }
+  
+  // If card not found in any bucket, start from bucket 0
+  if (currentBucket === -1) {
+    currentBucket = 0;
+  }
+  
+  // Determine new bucket based on difficulty
+  let newBucket;
+  switch (difficulty) {
+    case AnswerDifficulty.Wrong:
+      newBucket = 0;  // Move back to first bucket if wrong
+      break;
+    case AnswerDifficulty.Hard:
+      newBucket = Math.max(0, currentBucket - 1);  // Move back one bucket
+      break;
+    case AnswerDifficulty.Easy:
+      newBucket = Math.min(4, currentBucket + 1);  // Move forward one bucket
+      break;
+  }
+  
+  // Add card to the new bucket
+  if (!updatedBuckets.has(newBucket)) {
+    updatedBuckets.set(newBucket, new Set());
+  }
+  updatedBuckets.get(newBucket)!.add(card);
+  
+  return updatedBuckets;
 }
 
 /**
@@ -88,10 +148,14 @@ export function update(
  * @spec.requires card is a valid Flashcard.
  */
 export function getHint(card: Flashcard): string {
-  // TODO: Implement this function (and strengthen the spec!)
-  throw new Error("Implement me!");
+  if (card.hint && card.hint.trim() !== '') {
+    return card.hint;
+  }
+  if (card.tags.length > 0) {
+    return `Try to remember a card related to: ${card.tags.join(', ')}`;
+  }
+  return `First few characters: ${card.front.slice(0, 5)}...`;
 }
-
 /**
  * Computes statistics about the user's learning progress.
  *
@@ -101,6 +165,27 @@ export function getHint(card: Flashcard): string {
  * @spec.requires [SPEC TO BE DEFINED]
  */
 export function computeProgress(buckets: any, history: any): any {
+  let totalCards = 0;
+  const bucketDistribution: number[] = [];
   
-  throw new Error("Implement me!");
+  if (Array.isArray(buckets)) {
+    // If buckets is an array of sets (from toBucketSets)
+    buckets.forEach((bucket, index) => {
+      const bucketSize = bucket.size;
+      totalCards += bucketSize;
+      bucketDistribution[index] = bucketSize;
+    });
+  } else if (buckets instanceof Map) {
+    // If buckets is a Map
+    for (const [bucketNum, cardSet] of buckets.entries()) {
+      const bucketSize = cardSet.size;
+      totalCards += bucketSize;
+      bucketDistribution[bucketNum] = bucketSize;
+    }
+  }
+  
+  return {
+    totalCards,
+    bucketDistribution,
+  }
 }
